@@ -1,0 +1,72 @@
+services:
+  backend:
+    build: ./backend
+    container_name: elevator-backend-3017
+    restart: unless-stopped
+    environment:
+      - DB_PATH=/data/elevator.db
+      - PORT=3015
+      - JWT_SECRET=${JWT_SECRET:-change-this-secret-in-production}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - TZ=${TZ:-Europe/Moscow}
+      - LOG_PATH=/data/error.log
+    volumes:
+      - ${DATA_PATH:-./data}:/data
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 64M
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3015/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  frontend:
+    build: ./frontend
+    container_name: elevator-frontend-3017
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3017}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  backup:
+    image: nouchka/sqlite3:latest
+    container_name: elevator-backup-3017
+    restart: unless-stopped
+    volumes:
+      - ${DATA_PATH:-./data}:/data:ro
+      - ${BACKUP_PATH:-./backups}:/backups
+    entrypoint: |
+      sh -c '
+        echo "Backup service started";
+        while true; do
+          sleep 3600;
+          FILENAME="/backups/elevator-$(date +%Y%m%d-%H%M%S).db";
+          sqlite3 /data/elevator.db ".backup $$FILENAME";
+          STATUS=$$?;
+          if [ $$STATUS -eq 0 ]; then
+            CHECK=$$(sqlite3 $$FILENAME "PRAGMA integrity_check;" 2>&1);
+            if [ "$$CHECK" = "ok" ]; then
+              echo "[BACKUP] OK: $$FILENAME";
+            else
+              echo "[BACKUP] INTEGRITY FAIL: $$CHECK — removing corrupt file";
+              rm -f $$FILENAME;
+            fi;
+          else
+            echo "[BACKUP] sqlite3 error: $$STATUS";
+          fi;
+          ls -t /backups/elevator-*.db | tail -n +169 | xargs -r rm;
+          echo "[BACKUP] Kept $$(ls /backups/elevator-*.db 2>/dev/null | wc -l) files";
+        done
+      '
