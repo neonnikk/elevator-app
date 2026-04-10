@@ -171,26 +171,39 @@ const TaskCard = memo(function TaskCard({ task, onUpdate, onRefresh, forceExpand
   const { user } = useAuth();
   const [localExpanded, setLocalExpanded] = useState(false);
   const expanded = forceExpanded !== undefined ? forceExpanded : localExpanded;
-  const setExpanded = (v) => {
-    setLocalExpanded(v);
-    // Загружаем elevator_info при раскрытии если настройка включена
-    if (v && user?.pref_show_elevator_info && Object.keys(elevatorInfo).length === 0) {
-      api.get(`/buildings/${task.building?.id}/info`).then(r => {
-        const map = {};
-        r.data.forEach(row => {
-          if (row.elevator_id) map[row.elevator_id] = row.info_text;
-        });
-        setElevatorInfo(map);
-      }).catch(() => {});
-    }
-  };
   const [showHistory, setShowHistory] = useState(false);
   const [showYearly, setShowYearly] = useState(false);
   const [showRecords, setShowRecords] = useState(false);
   const [recordModal, setRecordModal] = useState(null);
   const [recordsKey, setRecordsKey] = useState(0);
   const [showInfo, setShowInfo] = useState(false);
-  const [elevatorInfo, setElevatorInfo] = useState({}); // key: el_id, val: info_text
+  // elevator_info: { [elevator_id]: info_text } — загружается при раскрытии
+  const [elevatorInfo, setElevatorInfo] = useState({});
+  const [elevatorInfoLoaded, setElevatorInfoLoaded] = useState(false);
+
+  // Загружаем elevator_info когда карточка раскрыта и галка включена
+  // useEffect реагирует и на ручное раскрытие и на forceExpanded
+  useEffect(() => {
+    if (expanded && !!user?.pref_show_elevator_info && !elevatorInfoLoaded) {
+      setElevatorInfoLoaded(true);
+      api.get(`/buildings/${task.building?.id}/info`).then(r => {
+        const map = {};
+        r.data.forEach(row => {
+          const txt = row.info_text?.trim();
+          if (!txt) return;
+          // elevator_id есть — привязано к конкретному лифту
+          if (row.elevator_id) { map[`el_${row.elevator_id}`] = txt; }
+          // только entrance_id — один лифт в подъезде
+          else if (row.entrance_id) { map[`en_${row.entrance_id}`] = txt; }
+          // только building — простое здание без подъездов
+          else { map[`b_${task.building?.id}`] = txt; }
+        });
+        setElevatorInfo(map);
+      }).catch(() => {});
+    }
+  }, [expanded, user?.pref_show_elevator_info, elevatorInfoLoaded, task.building?.id]);
+
+  const setExpanded = (v) => setLocalExpanded(v);
 
   const building = task.building;
   const entrances = building.entrances || [];
@@ -362,9 +375,9 @@ const TaskCard = memo(function TaskCard({ task, onUpdate, onRefresh, forceExpand
                           )}
                         </div>
                         {/* Информация о лифте для подъезда с одним лифтом */}
-                        {user?.pref_show_elevator_info && entrance.elevators?.[0] && elevatorInfo[entrance.elevators[0].id] && (
-                          <div style={{ paddingLeft: 12, paddingBottom: 2, fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', lineHeight: 1.4 }}>
-                            {elevatorInfo[entrance.elevators[0].id]}
+                        {!!user?.pref_show_elevator_info && (elevatorInfo[`en_${entrance.id}`] || elevatorInfo[`el_${entrance.elevators?.[0]?.id}`]) && (
+                          <div style={{ paddingLeft: 12, paddingBottom: 2, fontSize: user?.pref_info_font_size || 11, color: user?.pref_info_color || 'var(--text2)', fontStyle: 'italic', lineHeight: 1.4 }}>
+                            {elevatorInfo[`en_${entrance.id}`] || elevatorInfo[`el_${entrance.elevators?.[0]?.id}`]}
                           </div>
                         )}
                       </div>
@@ -403,9 +416,9 @@ const TaskCard = memo(function TaskCard({ task, onUpdate, onRefresh, forceExpand
                           <AddRecordBtn onClick={() => openRecord(`${building.name} — ${entrance.name} — ${el.name}`)} />
                         </div>
                         {/* Информация о лифте — если галка в профиле включена */}
-                        {user?.pref_show_elevator_info && elevatorInfo[el.id] && (
-                          <div style={{ paddingLeft: 28, paddingBottom: 4, fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', lineHeight: 1.4 }}>
-                            {elevatorInfo[el.id]}
+                        {!!user?.pref_show_elevator_info && elevatorInfo[`el_${el.id}`] && (
+                          <div style={{ paddingLeft: 28, paddingBottom: 4, fontSize: user?.pref_info_font_size || 11, color: user?.pref_info_color || 'var(--text2)', fontStyle: 'italic', lineHeight: 1.4 }}>
+                            {elevatorInfo[`el_${el.id}`]}
                           </div>
                         )}
                       </div>

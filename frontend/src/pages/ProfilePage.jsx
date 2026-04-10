@@ -22,6 +22,8 @@ export default function ProfilePage() {
     telegramChatId: user?.telegram_chat_id || '',
     prefShowElevatorInfo: !!user?.pref_show_elevator_info,
     prefShowRecords: !!user?.pref_show_records,
+    prefInfoFontSize: user?.pref_info_font_size || 11,
+    prefInfoColor: user?.pref_info_color || 'var(--text2)',
   });
   const [pwForm, setPwForm] = useState({ oldPassword: '', newPassword: '', confirm: '' });
   const [saving, setSaving] = useState(false);
@@ -36,6 +38,8 @@ export default function ProfilePage() {
         telegramChatId: form.telegramChatId,
         prefShowElevatorInfo: form.prefShowElevatorInfo,
         prefShowRecords: form.prefShowRecords,
+        prefInfoFontSize: form.prefInfoFontSize,
+        prefInfoColor: form.prefInfoColor,
       });
       await refreshUser();
       toast.success('Профиль сохранён');
@@ -169,6 +173,63 @@ export default function ProfilePage() {
               </div>
             ))}
           </div>
+
+          {/* Размер шрифта и цвет — только если галка включена */}
+          {form.prefShowElevatorInfo && (
+            <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Оформление текста</div>
+
+              {/* Размер шрифта */}
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 6 }}>
+                  Размер шрифта: <strong>{form.prefInfoFontSize}px</strong>
+                </div>
+                <input type="range" min="9" max="18" step="1"
+                  value={form.prefInfoFontSize}
+                  onChange={e => setForm(f => ({ ...f, prefInfoFontSize: parseInt(e.target.value) }))}
+                  style={{ width: '100%' }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
+                  <span>9px — мелкий</span><span>18px — крупный</span>
+                </div>
+              </div>
+
+              {/* Цвет текста */}
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 6 }}>Цвет текста</div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {[
+                    { val: 'var(--text3)',  label: 'Серый' },
+                    { val: 'var(--text2)',  label: 'Светлый' },
+                    { val: 'var(--text)',   label: 'Основной' },
+                    { val: 'var(--accent)', label: 'Акцент' },
+                    { val: 'var(--green)',  label: 'Зелёный' },
+                    { val: 'var(--yellow)', label: 'Жёлтый' },
+                  ].map(({ val, label }) => (
+                    <button key={val}
+                      onClick={() => setForm(f => ({ ...f, prefInfoColor: val }))}
+                      style={{
+                        padding: '4px 12px', borderRadius: 16, fontSize: 12, cursor: 'pointer',
+                        border: `2px solid ${form.prefInfoColor === val ? 'var(--accent)' : 'var(--border)'}`,
+                        background: form.prefInfoColor === val ? 'var(--accent-dim)' : 'var(--bg)',
+                        color: val.startsWith('var') ? val : val,
+                        fontWeight: form.prefInfoColor === val ? 700 : 400,
+                      }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Предпросмотр */}
+              <div style={{ padding: '8px 12px', background: 'var(--bg3)', borderRadius: 8, fontSize: 12, color: 'var(--text2)' }}>
+                Предпросмотр:&nbsp;
+                <span style={{ fontSize: form.prefInfoFontSize, color: form.prefInfoColor, fontStyle: 'italic' }}>
+                  Завод №1234, г/п 400кг, 2018г.в.
+                </span>
+              </div>
+            </div>
+          )}
 
           <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={saveProfile} disabled={saving}>
             {saving ? 'Сохранение...' : 'Сохранить'}

@@ -369,6 +369,8 @@ const migrations = [
   "ALTER TABLE to2_journal_history ADD COLUMN entrance_id INTEGER REFERENCES entrances(id)",
   "ALTER TABLE users ADD COLUMN pref_show_elevator_info INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE users ADD COLUMN pref_show_records INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE users ADD COLUMN pref_info_font_size INTEGER NOT NULL DEFAULT 11",
+  "ALTER TABLE users ADD COLUMN pref_info_color TEXT NOT NULL DEFAULT 'var(--text2)'",
 ];
 for (const sql of migrations) {
   try { db.prepare(sql).run(); } catch (_) { /* колонка уже существует — это нормально */ }

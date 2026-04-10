@@ -98,16 +98,18 @@ router.put('/me', authMiddleware,
     telegramChatId: { type: 'string', maxLength: 50 },
   }),
   (req, res) => {
-    const { displayName, color, telegramChatId, prefShowElevatorInfo, prefShowRecords } = req.body;
+    const { displayName, color, telegramChatId, prefShowElevatorInfo, prefShowRecords, prefInfoFontSize, prefInfoColor } = req.body;
     const existing = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
     db.prepare(
-      'UPDATE users SET display_name = ?, color = ?, telegram_chat_id = ?, pref_show_elevator_info = ?, pref_show_records = ? WHERE id = ?'
+      'UPDATE users SET display_name = ?, color = ?, telegram_chat_id = ?, pref_show_elevator_info = ?, pref_show_records = ?, pref_info_font_size = ?, pref_info_color = ? WHERE id = ?'
     ).run(
       displayName.trim(),
       color || '#6366F1',
       telegramChatId !== undefined ? (telegramChatId.trim() || null) : existing.telegram_chat_id,
       prefShowElevatorInfo !== undefined ? (prefShowElevatorInfo ? 1 : 0) : (existing.pref_show_elevator_info || 0),
       prefShowRecords !== undefined ? (prefShowRecords ? 1 : 0) : (existing.pref_show_records || 0),
+      prefInfoFontSize !== undefined ? Math.min(18, Math.max(9, parseInt(prefInfoFontSize) || 11)) : (existing.pref_info_font_size || 11),
+      prefInfoColor !== undefined ? (prefInfoColor.trim() || "var(--text2)") : (existing.pref_info_color || "var(--text2)"),
       req.user.id
     );
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
