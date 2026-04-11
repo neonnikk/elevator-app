@@ -23,21 +23,73 @@ router.post('/to2/:buildingId/:year/:month', authMiddleware, (req, res) => {
   const { buildingId, year, month } = req.params;
   const now = new Date().toISOString();
   try {
+    // Ставим ТО2 на здание
     const result = db.prepare(
       'INSERT OR IGNORE INTO task_to2 (building_id, year, month, set_by, set_at) VALUES (?, ?, ?, ?, ?)'
     ).run(buildingId, year, month, req.user.id, now);
-
     if (result.changes > 0) {
       db.prepare(
         'INSERT INTO to2_journal_history (entity_type, entity_id, action, user_id, timestamp, building_id, year, month) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
       ).run('to2', result.lastInsertRowid, 'set', req.user.id, now, buildingId, year, month);
     }
+
+    // Автоматически ставим ТО2 на все лифты/подъезды здания
+    const entrances = db.prepare('SELECT * FROM entrances WHERE building_id = ?').all(buildingId);
+    for (const ent of entrances) {
+      const elevators = db.prepare('SELECT * FROM elevators WHERE entrance_id = ?').all(ent.id);
+      if (elevators.length > 0) {
+        for (const el of elevators) {
+          db.prepare('INSERT OR IGNORE INTO elevator_to2 (elevator_id, building_id, year, month, set_by, set_at) VALUES (?, ?, ?, ?, ?, ?)')
+            .run(el.id, buildingId, year, month, req.user.id, now);
+        }
+      } else {
+        db.prepare('INSERT OR IGNORE INTO elevator_to2 (entrance_id, building_id, year, month, set_by, set_at) VALUES (?, ?, ?, ?, ?, ?)')
+          .run(ent.id, buildingId, year, month, req.user.id, now);
+      }
+    }
+    // Простое здание (без подъездов) — нет подэлементов
     const row = db.prepare('SELECT t.*, u.display_name as user_name FROM task_to2 t LEFT JOIN users u ON u.id = t.set_by WHERE t.building_id = ? AND t.year = ? AND t.month = ?')
       .get(buildingId, year, month);
     res.json({ active: true, data: row });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// ── ТО2 на лифт ──────────────────────────────────────────────────────────────
+
+router.post('/to2/elevator/:elevatorId/:year/:month', authMiddleware, (req, res) => {
+  const { elevatorId, year, month } = req.params;
+  const now = new Date().toISOString();
+  const el = db.prepare('SELECT e.*, ent.building_id FROM elevators e JOIN entrances ent ON ent.id = e.entrance_id WHERE e.id = ?').get(elevatorId);
+  if (!el) return res.status(404).json({ error: 'Лифт не найден' });
+  db.prepare('INSERT OR IGNORE INTO elevator_to2 (elevator_id, building_id, year, month, set_by, set_at) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(elevatorId, el.building_id, year, month, req.user.id, now);
+  res.json({ active: true });
+});
+
+router.delete('/to2/elevator/:elevatorId/:year/:month', authMiddleware, (req, res) => {
+  const { elevatorId, year, month } = req.params;
+  db.prepare('DELETE FROM elevator_to2 WHERE elevator_id = ? AND year = ? AND month = ?').run(elevatorId, year, month);
+  res.json({ active: false });
+});
+
+// ── ТО2 на подъезд ───────────────────────────────────────────────────────────
+
+router.post('/to2/entrance/:entranceId/:year/:month', authMiddleware, (req, res) => {
+  const { entranceId, year, month } = req.params;
+  const now = new Date().toISOString();
+  const ent = db.prepare('SELECT * FROM entrances WHERE id = ?').get(entranceId);
+  if (!ent) return res.status(404).json({ error: 'Подъезд не найден' });
+  db.prepare('INSERT OR IGNORE INTO elevator_to2 (entrance_id, building_id, year, month, set_by, set_at) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(entranceId, ent.building_id, year, month, req.user.id, now);
+  res.json({ active: true });
+});
+
+router.delete('/to2/entrance/:entranceId/:year/:month', authMiddleware, (req, res) => {
+  const { entranceId, year, month } = req.params;
+  db.prepare('DELETE FROM elevator_to2 WHERE entrance_id = ? AND year = ? AND month = ?').run(entranceId, year, month);
+  res.json({ active: false });
 });
 
 router.delete('/to2/:buildingId/:year/:month', authMiddleware, (req, res) => {
@@ -178,9 +230,16 @@ router.delete('/journal/building/:buildingId', authMiddleware, (req, res) => {
 router.get('/building/:buildingId/:year/:month', authMiddleware, (req, res) => {
   const { buildingId, year, month } = req.params;
 
-  // ТО2
+  // ТО2 на здание
   const to2 = db.prepare('SELECT t.*, u.display_name as user_name FROM task_to2 t LEFT JOIN users u ON u.id = t.set_by WHERE t.building_id = ? AND t.year = ? AND t.month = ?')
     .get(buildingId, year, month);
+
+  // ТО2 на лифты
+  const elevTo2 = db.prepare('SELECT elevator_id FROM elevator_to2 WHERE building_id = ? AND year = ? AND month = ? AND elevator_id IS NOT NULL')
+    .all(buildingId, year, month);
+  // ТО2 на подъезды
+  const entTo2 = db.prepare('SELECT entrance_id FROM elevator_to2 WHERE building_id = ? AND year = ? AND month = ? AND entrance_id IS NOT NULL')
+    .all(buildingId, year, month);
 
   // Журналы лифтов
   const elevJournals = db.prepare(`
@@ -204,6 +263,8 @@ router.get('/building/:buildingId/:year/:month', authMiddleware, (req, res) => {
 
   res.json({
     to2: to2 ? { active: true, set_by: to2.user_name, set_at: to2.set_at } : { active: false },
+    elevatorTo2: elevTo2.reduce((acc, r) => { acc[r.elevator_id] = true; return acc; }, {}),
+    entranceTo2: entTo2.reduce((acc, r) => { acc[r.entrance_id] = true; return acc; }, {}),
     journals: elevJournals.reduce((acc, j) => { acc[j.elevator_id] = true; return acc; }, {}),
     entranceJournals: entJournals.reduce((acc, j) => { acc[j.entrance_id] = true; return acc; }, {}),
     buildingJournal: !!buildingJournalRow,

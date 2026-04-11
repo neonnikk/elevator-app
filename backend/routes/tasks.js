@@ -141,9 +141,18 @@ router.get('/', authMiddleware, (req, res) => {
       ).all(...entranceIds)
     : [];
 
-  // Загружаем ТО2 для текущего месяца
+  // Загружаем ТО2 для текущего месяца (уровень здания)
   const to2Set = new Set(
     db.prepare(`SELECT building_id FROM task_to2 WHERE year = ? AND month = ? AND building_id IN (${placeholders})`).all(y, m, ...buildingIds).map(r => r.building_id)
+  );
+
+  // Загружаем ТО2 на лифты
+  const elevTo2Set = new Set(
+    db.prepare(`SELECT elevator_id FROM elevator_to2 WHERE year = ? AND month = ? AND building_id IN (${placeholders}) AND elevator_id IS NOT NULL`).all(y, m, ...buildingIds).map(r => r.elevator_id)
+  );
+  // Загружаем ТО2 на подъезды
+  const entTo2Set = new Set(
+    db.prepare(`SELECT entrance_id FROM elevator_to2 WHERE year = ? AND month = ? AND building_id IN (${placeholders}) AND entrance_id IS NOT NULL`).all(y, m, ...buildingIds).map(r => r.entrance_id)
   );
 
   // Загружаем активные журналы для всех лифтов зданий
@@ -206,12 +215,18 @@ router.get('/', authMiddleware, (req, res) => {
     }
 
     // Добавляем to2 и journal статусы в каждую запись
+    const hasAnyTo2 = to2Set.has(b.id) ||
+      entrancesWithElevators.some(e =>
+        entTo2Set.has(e.id) || (e.elevators || []).some(el => elevTo2Set.has(el.id))
+      );
     const entrancesWithJournals = entrancesWithElevators.map(e => ({
       ...e,
       journal: entranceJournalSet.has(e.id),
+      to2: entTo2Set.has(e.id),
       elevators: (e.elevators || []).map(el => ({
         ...el,
         journal: journalSet.has(el.id),
+        to2: elevTo2Set.has(el.id),
       })),
     }));
 
@@ -226,6 +241,7 @@ router.get('/', authMiddleware, (req, res) => {
       },
       completions,
       to2: to2Set.has(b.id),
+      hasAnyTo2,
     };
   }).filter(Boolean);
 

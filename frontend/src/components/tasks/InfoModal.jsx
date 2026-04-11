@@ -45,6 +45,9 @@ export default function InfoModal({ building, task, onClose, onUpdate }) {
   const [saving, setSaving] = useState(false);
   const [to2, setTo2] = useState(false);
   const [to2Loading, setTo2Loading] = useState(false);
+  const [elevatorTo2, setElevatorTo2] = useState({});   // { elevator_id: bool }
+  const [entranceTo2, setEntranceTo2] = useState({});   // { entrance_id: bool }
+  const [to2UnitLoading, setTo2UnitLoading] = useState({});
   const [journals, setJournals] = useState({});
   const [entranceJournals, setEntranceJournals] = useState({});
   const [buildingJournal, setBuildingJournal] = useState(false);
@@ -67,6 +70,8 @@ export default function InfoModal({ building, task, onClose, onUpdate }) {
       });
       setTexts(map);
       setTo2(statusRes.data.to2?.active || false);
+      setElevatorTo2(statusRes.data.elevatorTo2 || {});
+      setEntranceTo2(statusRes.data.entranceTo2 || {});
       setJournals(statusRes.data.journals || {});
       setEntranceJournals(statusRes.data.entranceJournals || {});
       setBuildingJournal(statusRes.data.buildingJournal || false);
@@ -89,6 +94,29 @@ export default function InfoModal({ building, task, onClose, onUpdate }) {
       onClose();
     } catch { toast.error('Ошибка'); }
     finally { setSaving(false); }
+  };
+
+  // Обработчик ТО2 на лифт или подъезд
+  const handleToggleTo2Unit = async (type, id, e) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    const key = `${type}_${id}`;
+    setTo2UnitLoading(p => ({ ...p, [key]: true }));
+    const current = type === 'elevator' ? !!elevatorTo2[id] : !!entranceTo2[id];
+    try {
+      if (current) {
+        await api.delete(`/to2journal/to2/${type}/${id}/${year}/${month}`);
+        if (type === 'elevator') setElevatorTo2(p => ({ ...p, [id]: false }));
+        else setEntranceTo2(p => ({ ...p, [id]: false }));
+        toast.success('ТО2 снято');
+      } else {
+        await api.post(`/to2journal/to2/${type}/${id}/${year}/${month}`);
+        if (type === 'elevator') setElevatorTo2(p => ({ ...p, [id]: true }));
+        else setEntranceTo2(p => ({ ...p, [id]: true }));
+        toast.success('ТО2 установлено');
+      }
+      if (onUpdate) onUpdate();
+    } catch (err) { toast.error(err.response?.data?.error || 'Ошибка'); }
+    finally { setTo2UnitLoading(p => ({ ...p, [key]: false })); }
   };
 
   // Обработчики
@@ -198,31 +226,65 @@ export default function InfoModal({ building, task, onClose, onUpdate }) {
                 />
               </div>
 
-              {/* Журнал */}
-              <div style={{ background: 'var(--bg3)', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
-                  Журнал — бумажный закончился
-                </div>
-                
-                {journalUnits.map(unit => {
-                  const key = `${unit.type}_${unit.id}`;
-                  let checked = false;
-                  if (unit.type === 'elevator') checked = !!journals[unit.id];
-                  else if (unit.type === 'entrance') checked = !!entranceJournals[unit.id];
-                  else if (unit.type === 'building') checked = buildingJournal;
+              {/* ТО2 и Журнал по лифтам/подъездам — компактная таблица */}
+              {journalUnits.length > 0 && (
+                <div style={{ background: 'var(--bg3)', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '4px 12px', alignItems: 'center' }}>
+                    {/* Заголовок */}
+                    <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      {journalUnits[0]?.type === 'building' ? 'Здание' : journalUnits.length > 1 ? 'Лифт / Подъезд' : 'Объект'}
+                    </div>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--yellow)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'center' }}>ТО2</div>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'center' }}>Жур.</div>
 
-                  return (
-                    <Checkbox
-                      key={key}
-                      checked={checked}
-                      loading={!!journalLoading[key]}
-                      onClick={(e) => handleToggleJournal(unit, e)}
-                      label={unit.label}
-                      color="var(--accent)"
-                    />
-                  );
-                })}
-              </div>
+                    {/* Строки по каждому лифту/подъезду */}
+                    {journalUnits.map(unit => {
+                      const jKey = `${unit.type}_${unit.id}`;
+                      const journalChecked = unit.type === 'elevator' ? !!journals[unit.id]
+                        : unit.type === 'entrance' ? !!entranceJournals[unit.id]
+                        : buildingJournal;
+                      const to2Checked = unit.type === 'elevator' ? !!elevatorTo2[unit.id]
+                        : unit.type === 'entrance' ? !!entranceTo2[unit.id]
+                        : false; // здание — не показываем здесь (есть отдельная галка выше)
+                      const to2Key = `${unit.type}_${unit.id}`;
+
+                      return [
+                        <div key={`label_${jKey}`} style={{ fontSize: 13, color: 'var(--text)', paddingTop: 4, paddingBottom: 2, borderTop: '1px solid var(--border)' }}>
+                          {unit.label}
+                        </div>,
+                        /* ТО2 — только для лифтов и подъездов, не для здания */
+                        unit.type !== 'building' ? (
+                          <div key={`to2_${jKey}`} style={{ display: 'flex', justifyContent: 'center', paddingTop: 4, borderTop: '1px solid var(--border)' }}>
+                            <div onClick={e => handleToggleTo2Unit(unit.type, unit.id, e)}
+                              style={{
+                                width: 20, height: 20, borderRadius: 5, cursor: to2UnitLoading[to2Key] ? 'wait' : 'pointer',
+                                border: `2px solid ${to2Checked ? 'var(--yellow)' : 'var(--border)'}`,
+                                background: to2Checked ? 'var(--yellow)' : 'transparent',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                transition: 'all 0.15s',
+                              }}>
+                              {to2Checked && <Check size={11} color="#000" strokeWidth={3}/>}
+                            </div>
+                          </div>
+                        ) : <div key={`to2_${jKey}`} style={{ borderTop: '1px solid var(--border)' }}/>,
+                        /* Журнал */
+                        <div key={`jur_${jKey}`} style={{ display: 'flex', justifyContent: 'center', paddingTop: 4, borderTop: '1px solid var(--border)' }}>
+                          <div onClick={e => handleToggleJournal(unit, e)}
+                            style={{
+                              width: 20, height: 20, borderRadius: 5, cursor: !!journalLoading[jKey] ? 'wait' : 'pointer',
+                              border: `2px solid ${journalChecked ? 'var(--accent)' : 'var(--border)'}`,
+                              background: journalChecked ? 'var(--accent)' : 'transparent',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              transition: 'all 0.15s',
+                            }}>
+                            {journalChecked && <Check size={11} color="#fff" strokeWidth={3}/>}
+                          </div>
+                        </div>,
+                      ];
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Технические данные */}
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 10 }}>

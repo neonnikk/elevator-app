@@ -336,6 +336,22 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_task_to2_building ON task_to2(building_id, year, month);
+
+  -- ТО2 на уровне лифта/подъезда за конкретный месяц (не переносится)
+  CREATE TABLE IF NOT EXISTS elevator_to2 (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    elevator_id INTEGER REFERENCES elevators(id) ON DELETE CASCADE,
+    entrance_id INTEGER REFERENCES entrances(id) ON DELETE CASCADE,
+    building_id INTEGER NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
+    year INTEGER NOT NULL,
+    month INTEGER NOT NULL,
+    set_by INTEGER REFERENCES users(id),
+    set_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+    CHECK((elevator_id IS NOT NULL) OR (entrance_id IS NOT NULL))
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_elevator_to2_elev ON elevator_to2(elevator_id, year, month) WHERE elevator_id IS NOT NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_elevator_to2_ent ON elevator_to2(entrance_id, year, month) WHERE entrance_id IS NOT NULL;
+  CREATE INDEX IF NOT EXISTS idx_elevator_to2_building ON elevator_to2(building_id, year, month);
   CREATE INDEX IF NOT EXISTS idx_elevator_journal_elevator ON elevator_journal(elevator_id);
   CREATE INDEX IF NOT EXISTS idx_to2_journal_history ON to2_journal_history(entity_type, entity_id);
 

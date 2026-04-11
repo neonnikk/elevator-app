@@ -310,7 +310,7 @@ const TaskCard = memo(function TaskCard({ task, onUpdate, onRefresh, forceExpand
         <div className="task-card-meta">
           <ProgressBar completions={completions} building={building} status={task.status} />
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            {task.to2 && (
+            {(task.to2 || task.hasAnyTo2) && (
               <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'var(--yellow)', color: '#000', lineHeight: 1.4, whiteSpace: 'nowrap' }}>ТО2</span>
             )}
             {/* ИЗМЕНЕНИЕ: Метка Жур. проверяет три уровня */}
@@ -373,6 +373,9 @@ const TaskCard = memo(function TaskCard({ task, onUpdate, onRefresh, forceExpand
                               {' · '}{parseDate(entranceCompletion.completed_at).toLocaleDateString('ru')}
                             </span>
                           )}
+                          {/* Метки ТО2 и Жур. для подъезда */}
+                          {entrance.to2 && <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 4px', borderRadius: 3, background: 'var(--yellow)', color: '#000', marginLeft: 4 }}>ТО2</span>}
+                          {entrance.journal && <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 4px', borderRadius: 3, background: 'var(--accent)', color: '#fff', marginLeft: 2 }}>Жур.</span>}
                         </div>
                         {/* Информация о лифте для подъезда с одним лифтом */}
                         {!!user?.pref_show_elevator_info && (elevatorInfo[`en_${entrance.id}`] || elevatorInfo[`el_${entrance.elevators?.[0]?.id}`]) && (
@@ -411,6 +414,9 @@ const TaskCard = memo(function TaskCard({ task, onUpdate, onRefresh, forceExpand
                                 {' · '}{parseDate(c.completed_at).toLocaleDateString('ru')}
                               </span>
                             )}
+                            {/* Метки ТО2 и Жур. для лифта */}
+                            {el.to2 && <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 4px', borderRadius: 3, background: 'var(--yellow)', color: '#000', marginLeft: 4 }}>ТО2</span>}
+                            {el.journal && <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 4px', borderRadius: 3, background: 'var(--accent)', color: '#fff', marginLeft: 2 }}>Жур.</span>}
                           </div>
                           {/* Кнопка добавления заявки по лифту */}
                           <AddRecordBtn onClick={() => openRecord(`${building.name} — ${entrance.name} — ${el.name}`)} />
