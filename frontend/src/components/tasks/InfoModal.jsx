@@ -91,6 +91,7 @@ export default function InfoModal({ building, task, onClose, onUpdate }) {
       }));
       await api.put(`/buildings/${building.id}/info`, payload);
       toast.success('Сохранено');
+      if (onUpdate) onUpdate();
       onClose();
     } catch { toast.error('Ошибка'); }
     finally { setSaving(false); }
@@ -114,7 +115,6 @@ export default function InfoModal({ building, task, onClose, onUpdate }) {
         else setEntranceTo2(p => ({ ...p, [id]: true }));
         toast.success('ТО2 установлено');
       }
-      if (onUpdate) onUpdate();
     } catch (err) { toast.error(err.response?.data?.error || 'Ошибка'); }
     finally { setTo2UnitLoading(p => ({ ...p, [key]: false })); }
   };
@@ -133,7 +133,6 @@ export default function InfoModal({ building, task, onClose, onUpdate }) {
         setTo2(true);
         toast.success('ТО2 установлено');
       }
-      if (onUpdate) onUpdate();
     } catch (err) { toast.error(err.response?.data?.error || 'Ошибка'); }
     finally { setTo2Loading(false); }
   };
@@ -171,7 +170,6 @@ export default function InfoModal({ building, task, onClose, onUpdate }) {
 
         toast.success('Журнал установлен');
       }
-      if (onUpdate) onUpdate();
     } catch (err) { 
       toast.error(err.response?.data?.error || 'Ошибка'); 
     }
@@ -205,11 +203,11 @@ export default function InfoModal({ building, task, onClose, onUpdate }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) { if (onUpdate) onUpdate(); onClose(); } }}>
       <div className="modal" style={{ maxWidth: 560, maxHeight: '90vh', overflowY: 'auto' }}>
         <div className="modal-header">
           <span className="modal-title">Информация — {building.name}</span>
-          <button className="btn btn-ghost btn-sm btn-icon" onClick={onClose}><X size={16}/></button>
+          <button className="btn btn-ghost btn-sm btn-icon" onClick={() => { if (onUpdate) onUpdate(); onClose(); }}><X size={16}/></button>
         </div>
         <div className="modal-body">
           {loading ? <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner"/></div> : (
@@ -306,7 +304,7 @@ export default function InfoModal({ building, task, onClose, onUpdate }) {
           )}
         </div>
         <div className="modal-footer">
-          <button className="btn btn-ghost" onClick={onClose}>Отмена</button>
+          <button className="btn btn-ghost" onClick={() => { if (onUpdate) onUpdate(); onClose(); }}>Закрыть</button>
           <button className="btn btn-primary" onClick={save} disabled={saving}>
             {saving ? 'Сохранение...' : 'Сохранить'}
           </button>
