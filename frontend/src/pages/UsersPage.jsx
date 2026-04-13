@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Plus, X, Shield, ShieldOff, Trash2, Edit2, Eye, EyeOff } from 'lucide-react';
+import { Plus, X, Shield, ShieldOff, Trash2, Edit2, Eye, Filter, Eye, FilterOff } from 'lucide-react';
 import api from '../utils/api';
+import MaskModal from '../components/MaskModal';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import DistrictsTab from './DistrictsTab';
@@ -253,6 +254,7 @@ export default function UsersPage() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editModal, setEditModal] = useState(null);
+  const [maskModal, setMaskModal] = useState(null);
   const [menuModal, setMenuModal] = useState(null);
   const [tab, setTab] = useState('users'); // 'users' = пользователи | 'districts' = районы
 
@@ -347,6 +349,9 @@ export default function UsersPage() {
                             <Eye size={14}/>
                           </button>
                         )}
+                        <button className="btn btn-ghost btn-sm btn-icon" title="Маска (видимые лифты/подъезды)" onClick={() => setMaskModal(u)}>
+                          <Filter size={14}/>
+                        </button>
                         {u.id !== me.id && (
                           <>
                             <button className="btn btn-ghost btn-sm btn-icon" title={u.is_blocked ? 'Разблокировать' : 'Заблокировать'} onClick={() => toggleBlock(u)}>
@@ -375,5 +380,8 @@ export default function UsersPage() {
         <MenuVisibilityModal user={menuModal} onClose={() => setMenuModal(null)} />
       )}
     </div>
+  {maskModal && (
+    <MaskModal user={maskModal} onClose={() => setMaskModal(null)} />
+  )}
   );
 }

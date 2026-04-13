@@ -112,6 +112,13 @@ router.get('/', authMiddleware, (req, res) => {
 
   const placeholders = buildingIds.map(() => '?').join(',');
 
+  // Загружаем маску пользователя (скрытые лифты/подъезды)
+  const maskRows = (user.role !== 'admin' && !user.perm_view_all)
+    ? db.prepare('SELECT elevator_id, entrance_id, building_id FROM user_elevator_mask WHERE user_id = ? AND visible = 0').all(req.user.id)
+    : [];
+  const maskedElevators = new Set(maskRows.filter(r => r.elevator_id).map(r => r.elevator_id));
+  const maskedEntrances  = new Set(maskRows.filter(r => r.entrance_id && !r.elevator_id).map(r => r.entrance_id));
+
   // Создаём задачи для всех зданий если ещё не существуют
   buildings.forEach(b => ensureMonthlyTask(b.id, y, m));
 
@@ -214,12 +221,38 @@ router.get('/', authMiddleware, (req, res) => {
       db.prepare('UPDATE monthly_tasks SET status = ? WHERE id = ?').run(newStatus, task.id);
     }
 
+    // Применяем маску — убираем скрытые лифты/подъезды
+    const entrancesFiltered = entrancesWithElevators.map(ent => ({
+      ...ent,
+      _masked: maskedEntrances.has(ent.id) && (elevatorsByEntrance[ent.id] || []).length === 0,
+      elevators: (elevatorsByEntrance[ent.id] || []).filter(el => !maskedElevators.has(el.id)),
+    })).filter(ent => {
+      // Подъезд без лифтов — скрываем если он в маске
+      if ((elevatorsByEntrance[ent.id] || []).length === 0) return !maskedEntrances.has(ent.id);
+      // Подъезд с лифтами — скрываем если все лифты скрыты
+      const visibleElevs = (elevatorsByEntrance[ent.id] || []).filter(el => !maskedElevators.has(el.id));
+      return visibleElevs.length > 0;
+    });
+
+    // Если все подъезды скрыты — пропускаем здание
+    if (entrancesWithElevators.length > 0 && entrancesFiltered.length === 0) return null;
+
+    // Пересчитываем статус только по видимым лифтам/подъездам
+    const elevatorsByEntranceFiltered = {};
+    for (const ent of entrancesFiltered) {
+      elevatorsByEntranceFiltered[ent.id] = ent.elevators || [];
+    }
+    const newStatusMasked = calcStatus(task, completions, entrancesFiltered, elevatorsByEntranceFiltered, dueDay);
+    if (newStatusMasked !== task.status) {
+      db.prepare('UPDATE monthly_tasks SET status = ? WHERE id = ?').run(newStatusMasked, task.id);
+    }
+
     // Добавляем to2 и journal статусы в каждую запись
     const hasAnyTo2 = to2Set.has(b.id) ||
       entrancesWithElevators.some(e =>
         entTo2Set.has(e.id) || (e.elevators || []).some(el => elevTo2Set.has(el.id))
       );
-    const entrancesWithJournals = entrancesWithElevators.map(e => ({
+    const entrancesWithJournals = entrancesFiltered.map(e => ({
       ...e,
       journal: entranceJournalSet.has(e.id),
       to2: entTo2Set.has(e.id),
@@ -232,7 +265,7 @@ router.get('/', authMiddleware, (req, res) => {
 
     return {
       ...task,
-      status: newStatus,
+      status: newStatusMasked,
       building: {
         ...b,
         entrances: entrancesWithJournals,

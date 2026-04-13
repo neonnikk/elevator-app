@@ -387,6 +387,7 @@ const migrations = [
   "ALTER TABLE users ADD COLUMN pref_show_records INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE users ADD COLUMN pref_info_font_size INTEGER NOT NULL DEFAULT 11",
   "ALTER TABLE users ADD COLUMN pref_info_color TEXT NOT NULL DEFAULT 'var(--text2)'",
+  "CREATE TABLE IF NOT EXISTS user_elevator_mask (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, elevator_id INTEGER REFERENCES elevators(id) ON DELETE CASCADE, entrance_id INTEGER REFERENCES entrances(id) ON DELETE CASCADE, building_id INTEGER NOT NULL REFERENCES buildings(id) ON DELETE CASCADE, visible INTEGER NOT NULL DEFAULT 1, UNIQUE(user_id, elevator_id, entrance_id, building_id))",
 ];
 for (const sql of migrations) {
   try { db.prepare(sql).run(); } catch (_) { /* колонка уже существует — это нормально */ }
