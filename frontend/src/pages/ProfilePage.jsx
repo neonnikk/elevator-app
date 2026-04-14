@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Monitor, Smartphone, Cpu } from 'lucide-react';
+import { Monitor, Smartphone, Cpu, Sun, Moon, SunMoon } from 'lucide-react';
+import { getTheme, setTheme, applyTheme } from '../utils/viewMode';
 import api from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useViewMode } from '../contexts/ViewModeContext';
@@ -16,6 +17,13 @@ const VIEW_MODES = [
 export default function ProfilePage() {
   const { user, refreshUser, logout } = useAuth();
   const { mode: viewMode, changeMode, isMobile } = useViewMode();
+  const [theme, setThemeState] = useState(() => user?.id ? getTheme(user.id) : 'auto');
+
+  const changeTheme = (t) => {
+    setThemeState(t);
+    if (user?.id) setTheme(user.id, t);
+    applyTheme(t);
+  };
   const [form, setForm] = useState({
     displayName: user?.display_name || '',
     color: user?.color || '#6366F1',
@@ -107,6 +115,33 @@ export default function ProfilePage() {
           <button className="btn btn-primary" onClick={saveProfile} disabled={saving}>
             {saving ? 'Сохранение...' : 'Сохранить профиль'}
           </button>
+        </div>
+
+        {/* Карточка темы оформления */}
+        <div className="card" style={{ marginBottom: 16 }}>
+          <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Тема оформления</h3>
+          <div style={{ display: 'flex', gap: 10 }}>
+            {[
+              { key: 'auto',  Icon: SunMoon, label: 'Авто',   desc: 'По системной' },
+              { key: 'light', Icon: Sun,     label: 'Светлая', desc: 'Всегда светлая' },
+              { key: 'dark',  Icon: Moon,    label: 'Тёмная',  desc: 'Всегда тёмная' },
+            ].map(({ key, Icon, label, desc }) => {
+              const active = theme === key;
+              return (
+                <button key={key} onClick={() => changeTheme(key)}
+                  style={{
+                    flex: 1, padding: '14px 10px', borderRadius: 10, cursor: 'pointer',
+                    border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                    background: active ? 'var(--accent-dim)' : 'var(--bg)',
+                    textAlign: 'center', transition: 'all 0.15s',
+                  }}>
+                  <Icon size={22} color={active ? 'var(--accent)' : 'var(--text2)'} style={{ marginBottom: 6 }} />
+                  <div style={{ fontSize: 13, fontWeight: 700, color: active ? 'var(--accent)' : 'var(--text)' }}>{label}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>{desc}</div>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Карточка режима отображения */}

@@ -19,6 +19,7 @@
 
 import { createContext, useContext, useState, useEffect } from 'react';
 import api from '../utils/api';
+import { getTheme, applyTheme } from '../utils/viewMode';
 
 const AuthContext = createContext(null);
 
@@ -33,7 +34,7 @@ export function AuthProvider({ children }) {
     if (legacyToken) api.defaults.headers.common['Authorization'] = `Bearer ${legacyToken}`;
 
     api.get('/me')
-      .then(r => { setUser(r.data); setLoading(false); })
+      .then(r => { setUser(r.data); applyTheme(getTheme(r.data.id)); setLoading(false); })
       .catch(() => {
         // Не авторизован — очищаем устаревший токен если был
         localStorage.removeItem('token');
@@ -50,6 +51,7 @@ export function AuthProvider({ children }) {
     localStorage.setItem('token', r.data.token);
     api.defaults.headers.common['Authorization'] = `Bearer ${r.data.token}`;
     setUser(r.data.user);
+    applyTheme(getTheme(r.data.user.id));
     return r.data.user;
   };
 
@@ -58,6 +60,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('token');
     delete api.defaults.headers.common['Authorization'];
     setUser(null);
+    applyTheme('auto');
   };
 
   // Используется после обновления профиля или прав — синхронизирует state с сервером

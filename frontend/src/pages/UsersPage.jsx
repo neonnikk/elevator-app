@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, X, Shield, ShieldOff, Trash2, Edit2, Eye, Filter, Eye, FilterOff } from 'lucide-react';
+import { Plus, X, Shield, ShieldOff, Trash2, Edit2, Eye, Filter } from 'lucide-react';
 import api from '../utils/api';
 import MaskModal from '../components/MaskModal';
 import { useAuth } from '../contexts/AuthContext';
@@ -379,9 +379,9 @@ export default function UsersPage() {
       {menuModal && (
         <MenuVisibilityModal user={menuModal} onClose={() => setMenuModal(null)} />
       )}
+      {maskModal && (
+        <MaskModal user={maskModal} onClose={() => setMaskModal(null)} />
+      )}
     </div>
-  {maskModal && (
-    <MaskModal user={maskModal} onClose={() => setMaskModal(null)} />
-  )}
   );
 }
