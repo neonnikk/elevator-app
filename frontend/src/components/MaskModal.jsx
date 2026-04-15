@@ -20,6 +20,20 @@ export default function MaskModal({ user, onClose }) {
       const exp = {};
       r.data.forEach(b => { exp[b.id] = r.data.length <= 5; });
       setExpanded(exp);
+      // Инициализируем hidden Set из флагов visible которые вернул бэкенд
+      const hiddenSet = new Set();
+      r.data.forEach(b => {
+        b.entrances.forEach(ent => {
+          if (ent.type === 'entrance_with_elevators') {
+            ent.elevators.forEach(el => {
+              if (!el.visible) hiddenSet.add(`elevator_${el.id}`);
+            });
+          } else {
+            if (ent.visible === false) hiddenSet.add(`entrance_${ent.id}`);
+          }
+        });
+      });
+      setHidden(hiddenSet);
     } catch { toast.error('Ошибка загрузки'); }
     finally { setLoading(false); }
   }, [user.id]);
