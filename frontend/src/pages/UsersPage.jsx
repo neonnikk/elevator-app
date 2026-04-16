@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, X, Shield, ShieldOff, Trash2, Edit2, Eye, Filter } from 'lucide-react';
+import { Plus, X, Shield, ShieldOff, Trash2, Edit2, Eye, EyeOff, Filter } from 'lucide-react';
 import api from '../utils/api';
 import MaskModal from '../components/MaskModal';
 import { useAuth } from '../contexts/AuthContext';
