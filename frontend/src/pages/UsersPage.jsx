@@ -39,15 +39,23 @@ function MenuVisibilityModal({ user: editUser, onClose }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    api.get(`/users/${editUser.id}/menu`).then(r => {
-      setVisibility(r.data);
-      setLoading(false);
-    });
+    api.get(`/users/${editUser.id}/menu`)
+      .then(r => {
+        setVisibility(r.data);
+        setLoading(false);
+      })
+      .catch(() => {
+        // При ошибке загружаем пустой объект — все пункты видимы по умолчанию
+        setVisibility({});
+        setLoading(false);
+      });
   }, [editUser.id]);
 
-  const toggle = (key) => setVisibility(v => ({ ...v, [key]: v[key] === false ? true : false }));
-
+  // visible: true если ключа нет (default) или явно true; false если явно false
   const isVisible = (key) => visibility[key] !== false;
+
+  // toggle: если видимый → скрыть (false), если скрытый → показать (true)
+  const toggle = (key) => setVisibility(v => ({ ...v, [key]: isVisible(key) ? false : true }));
 
   const save = async () => {
     setSaving(true);
