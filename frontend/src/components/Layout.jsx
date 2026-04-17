@@ -43,7 +43,11 @@ export function useMenuConfig() {
     if (item.permKey && user?.role !== 'admin' && !user?.[item.permKey]) return false;
     if (user?.role === 'admin') return true; // администратор всегда видит всё
     const v = visibility[item.key];
-    return v === undefined ? true : v; // по умолчанию — видимый
+    // Если у пользователя есть хоть одна запись настроек — неуказанные пункты скрыты
+    // Если записей нет совсем — показываем всё (настройки ещё не задавались)
+    const hasAnySettings = Object.keys(visibility).length > 0;
+    if (v === undefined) return !hasAnySettings;
+    return v;
   };
 
   return { labels, setLabels, visibility, setVisibility, getLabel, isVisible, reload: load };

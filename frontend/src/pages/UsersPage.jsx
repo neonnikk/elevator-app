@@ -60,7 +60,12 @@ function MenuVisibilityModal({ user: editUser, onClose }) {
   const save = async () => {
     setSaving(true);
     try {
-      await api.put(`/users/${editUser.id}/menu`, visibility);
+      // Явно записываем все пункты меню — чтобы undefined не интерпретировался как true
+      const payload = {};
+      MENU_ITEMS.forEach(item => {
+        payload[item.key] = isVisible(item.key);
+      });
+      await api.put(`/users/${editUser.id}/menu`, payload);
       toast.success('Сохранено');
       onClose();
     } catch { toast.error('Ошибка'); }
