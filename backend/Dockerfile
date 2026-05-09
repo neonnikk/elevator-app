@@ -1,10 +1,11 @@
 FROM node:20-alpine
 
+# better-sqlite3 — нативный модуль, требует инструментов компиляции
+RUN apk add --no-cache python3 make g++
+
 WORKDIR /app
-COPY package.json ./
-# Если есть package-lock.json — используем npm ci для воспроизводимых сборок
 COPY package*.json ./
-RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi
+RUN npm install --omit=dev
 
 COPY . .
 
