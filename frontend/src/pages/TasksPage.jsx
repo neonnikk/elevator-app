@@ -75,7 +75,7 @@ function QuickRecordModal({ building, prefillTitle, onClose, onSaved }) {
     setSaving(true);
     try {
       await api.post('/records', { ...form, building_id: building.id });
-      toast.success('Запись добавлена');
+      toast.success('Заявка добавлена');
       onSaved(); onClose();
     } catch { toast.error('Ошибка'); }
     finally { setSaving(false); }
@@ -85,7 +85,7 @@ function QuickRecordModal({ building, prefillTitle, onClose, onSaved }) {
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal">
         <div className="modal-header">
-          <span className="modal-title">Новая запись — {building.name}</span>
+          <span className="modal-title">Новая заявка — {building.name}</span>
           <button className="btn btn-ghost btn-sm btn-icon" onClick={onClose}><X size={16}/></button>
         </div>
         <div className="modal-body">
@@ -129,7 +129,7 @@ function BuildingRecords({ buildingId, refreshKey }) {
   }, [buildingId, refreshKey]);
 
   if (loading) return <div style={{ padding: 8, textAlign: 'center' }}><div className="spinner" /></div>;
-  if (!records.length) return <p style={{ color: 'var(--text2)', fontSize: 13, padding: '4px 0' }}>Нет записей по этому объекту</p>;
+  if (!records.length) return <p style={{ color: 'var(--text2)', fontSize: 13, padding: '4px 0' }}>Нет заявок по этому объекту</p>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -161,7 +161,7 @@ function AddRecordBtn({ label, onClick }) {
       style={{ fontSize: 11.5, color: 'var(--accent)', padding: '3px 8px', height: 'auto' }}
       onClick={e => { e.stopPropagation(); onClick(); }}
     >
-      <Plus size={11} />{!isMobile && <span> {label || 'Запись'}</span>}
+      <Plus size={11} />{!isMobile && <span> {label || 'Заявка'}</span>}
     </button>
   );
 }
@@ -444,7 +444,7 @@ const TaskCard = memo(function TaskCard({ task, onUpdate, onRefresh, forceExpand
               <BarChart3 size={14} /> За год
             </button>
             <button className={`btn btn-ghost btn-sm ${showRecords ? 'active' : ''}`} onClick={() => setShowRecords(!showRecords)}>
-              <ClipboardList size={14} /> Записи
+              <ClipboardList size={14} /> Заявки
             </button>
             <button className="btn btn-ghost btn-sm" onClick={() => setShowInfo(true)}>
               <Info size={14} /> Инф.
@@ -491,7 +491,7 @@ const TaskCard = memo(function TaskCard({ task, onUpdate, onRefresh, forceExpand
           {showRecords && (
             <div style={{ marginTop: 10, padding: 12, background: 'var(--bg)', borderRadius: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Записи по объекту</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Заявки по объекту</div>
                 <button className="btn btn-ghost btn-sm" style={{ fontSize: 12 }} onClick={() => openRecord(`ТО — ${building.name}`)}>
                   <Plus size={13} /> Добавить
                 </button>
