@@ -237,15 +237,15 @@ router.get('/', authMiddleware, (req, res) => {
     // Если все подъезды скрыты — пропускаем здание
     if (entrancesWithElevators.length > 0 && entrancesFiltered.length === 0) return null;
 
-    // Пересчитываем статус только по видимым лифтам/подъездам
+    // Пересчитываем статус только по видимым лифтам/подъездам — только для ответа
+    // В БД сохраняется newStatus (немаскированный) — реальное состояние задачи
+    // Пользователю возвращается newStatusMasked — то что он видит с учётом маски
     const elevatorsByEntranceFiltered = {};
     for (const ent of entrancesFiltered) {
       elevatorsByEntranceFiltered[ent.id] = ent.elevators || [];
     }
     const newStatusMasked = calcStatus(task, completions, entrancesFiltered, elevatorsByEntranceFiltered, dueDay);
-    if (newStatusMasked !== task.status) {
-      db.prepare('UPDATE monthly_tasks SET status = ? WHERE id = ?').run(newStatusMasked, task.id);
-    }
+    // НЕ обновляем БД маскированным статусом — только немаскированный newStatus выше
 
     // Добавляем to2 и journal статусы в каждую запись
     const hasAnyTo2 = to2Set.has(b.id) ||
