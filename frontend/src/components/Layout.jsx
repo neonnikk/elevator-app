@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Plus, Radio } from 'lucide-react';
+import { Plus, Radio, ScrollText } from 'lucide-react';
 import { ListChecks, Building2, ClipboardList, Users, User, LogOut, Menu, X, Calendar, Edit2, Check, Settings, BarChart2, WifiOff, PieChart } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
@@ -14,6 +14,7 @@ const DEFAULT_MENU = [
   { key: 'records',   path: '/records',   Icon: ClipboardList, defaultLabel: 'Заявки' },
   { key: 'stats',     path: '/stats',     Icon: PieChart,     defaultLabel: 'Статистика' },
   { key: 'comm',      path: '/comm',      Icon: Radio,        defaultLabel: 'Связь',      permKey: 'perm_comm' },
+  { key: 'applog',    path: '/applog',    Icon: ScrollText,   defaultLabel: 'Лог',        adminOnly: true },
   { key: 'users',     path: '/users',     Icon: Users,        defaultLabel: 'Пользователи', adminOnly: true },
   { key: 'profile',   path: '/profile',   Icon: User,         defaultLabel: 'Профиль' },
 ];

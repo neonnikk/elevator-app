@@ -15,6 +15,7 @@ const CalendarPage  = lazy(() => import('./pages/CalendarPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const StatsPage     = lazy(() => import('./pages/StatsPage'));
 const CommPage      = lazy(() => import('./pages/CommPage'));
+const AppLogPage   = lazy(() => import('./pages/AppLogPage'));
 import { useEffect, useState } from 'react';
 import api from './utils/api';
 
@@ -54,6 +55,7 @@ function AppRoutes() {
         <Route path="/users" element={<UsersPage />} />
         <Route path="/stats" element={<StatsPage />} />
         <Route path="/comm" element={<CommPage />} />
+        <Route path="/applog" element={<AppLogPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="*" element={<Navigate to="/tasks" />} />
       </Routes>

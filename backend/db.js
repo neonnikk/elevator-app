@@ -387,6 +387,10 @@ const migrations = [
   "ALTER TABLE users ADD COLUMN pref_show_records INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE users ADD COLUMN pref_info_font_size INTEGER NOT NULL DEFAULT 11",
   "ALTER TABLE users ADD COLUMN pref_info_color TEXT NOT NULL DEFAULT 'var(--text2)'",
+  "CREATE TABLE IF NOT EXISTS app_log (id INTEGER PRIMARY KEY AUTOINCREMENT, event_type TEXT NOT NULL, user_id INTEGER REFERENCES users(id) ON DELETE SET NULL, user_name TEXT, ip TEXT, description TEXT NOT NULL, meta TEXT, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')))",
+  "CREATE INDEX IF NOT EXISTS idx_app_log_type ON app_log(event_type)",
+  "CREATE INDEX IF NOT EXISTS idx_app_log_created ON app_log(created_at)",
+  "CREATE INDEX IF NOT EXISTS idx_app_log_user ON app_log(user_id)",
   "CREATE TABLE IF NOT EXISTS user_elevator_mask (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, elevator_id INTEGER REFERENCES elevators(id) ON DELETE CASCADE, entrance_id INTEGER REFERENCES entrances(id) ON DELETE CASCADE, building_id INTEGER NOT NULL REFERENCES buildings(id) ON DELETE CASCADE, visible INTEGER NOT NULL DEFAULT 1, UNIQUE(user_id, elevator_id, entrance_id, building_id))",
 ];
 for (const sql of migrations) {

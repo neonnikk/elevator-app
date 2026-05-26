@@ -28,6 +28,7 @@ import districtsRouter from './routes/districts.js';
 import commRouter from './routes/comm.js';
 import to2JournalRouter from './routes/to2journal.js';
 import maskRouter from './routes/mask.js';
+import logRouter from './routes/log.js';
 
 const app = express();
 
@@ -102,6 +103,7 @@ app.use('/api/districts', districtsRouter);
 app.use('/api/comm', commRouter);
 app.use('/api/to2journal', to2JournalRouter);
 app.use('/api/mask', maskRouter);
+app.use('/api/log', logRouter);
 
 // ── Health check ─────────────────────────────────────────────────────────────
 // Используется docker-compose healthcheck — backend считается готовым только

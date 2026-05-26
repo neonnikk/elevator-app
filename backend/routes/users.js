@@ -33,14 +33,14 @@ router.post('/', authMiddleware, adminOnly,
       `INSERT INTO users (username, password_hash, display_name, color, role,
         perm_create_tasks, perm_edit_tasks, perm_delete_tasks, perm_assign_users,
         perm_complete_others, perm_view_all, perm_manage_users, perm_edit_due_day, perm_edit_buildings,
-        perm_view_stats, perm_comm, perm_manage_districts)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        perm_comm, perm_manage_districts)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       username.trim(), hash, displayName.trim(), color || '#6366F1', role || 'user',
       p.create_tasks ? 1 : 0, p.edit_tasks ? 1 : 0, p.delete_tasks ? 1 : 0,
       p.assign_users ? 1 : 0, p.complete_others ? 1 : 0,
       p.view_all !== false ? 1 : 0, p.manage_users ? 1 : 0, p.edit_due_day ? 1 : 0,
-      p.edit_buildings ? 1 : 0, p.view_stats ? 1 : 0, p.comm ? 1 : 0,
+      p.edit_buildings ? 1 : 0, p.comm ? 1 : 0,
       p.manage_districts ? 1 : 0
     );
     res.json(safeUser(db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid)));
@@ -56,7 +56,7 @@ router.put('/:id', authMiddleware, adminOnly, (req, res) => {
     `UPDATE users SET display_name = ?, color = ?, role = ?, is_blocked = ?,
       perm_create_tasks = ?, perm_edit_tasks = ?, perm_delete_tasks = ?,
       perm_assign_users = ?, perm_complete_others = ?, perm_view_all = ?,
-      perm_manage_users = ?, perm_edit_due_day = ?, perm_edit_buildings = ?, perm_view_stats = ?, perm_comm = ?, perm_manage_districts = ? WHERE id = ?`
+      perm_manage_users = ?, perm_edit_due_day = ?, perm_edit_buildings = ?, perm_comm = ?, perm_manage_districts = ? WHERE id = ?`
   ).run(
     displayName || existing.display_name, color || existing.color,
     role || existing.role,
@@ -70,7 +70,6 @@ router.put('/:id', authMiddleware, adminOnly, (req, res) => {
     p.manage_users  !== undefined ? (p.manage_users  ? 1 : 0) : existing.perm_manage_users,
     p.edit_due_day  !== undefined ? (p.edit_due_day  ? 1 : 0) : existing.perm_edit_due_day,
     p.edit_buildings !== undefined ? (p.edit_buildings ? 1 : 0) : existing.perm_edit_buildings,
-    p.view_stats     !== undefined ? (p.view_stats     ? 1 : 0) : existing.perm_view_stats,
     p.comm              !== undefined ? (p.comm              ? 1 : 0) : (existing.perm_comm || 0),
     p.manage_districts  !== undefined ? (p.manage_districts  ? 1 : 0) : (existing.perm_manage_districts || 0),
     req.params.id

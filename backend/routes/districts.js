@@ -187,7 +187,7 @@ router.get('/:id/stats', authMiddleware, (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
   const districtId = parseInt(req.params.id);
 
-  // Проверка доступа: админ и perm_view_stats видят все районы,
+  // Проверка доступа: только администраторы видят все районы.
   // остальные — только свои (где состоят в звене)
   if (user.role !== 'admin') {
     const memberOf = db.prepare(`

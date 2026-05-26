@@ -1,4 +1,4 @@
-const CACHE = 'to-liftov-v3';
+const CACHE = 'to-liftov-v4';
 const STATIC = [
   '/',
   '/index.html',

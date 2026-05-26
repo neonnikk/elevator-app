@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { writeLog, getIp } from '../logger.js';
 import db from '../db.js';
 import { authMiddleware } from '../auth.js';
 import { getIO } from '../socket.js';
@@ -402,6 +403,29 @@ router.post('/:taskId/complete', authMiddleware, (req, res) => {
     return res.status(err.status || 500).json({ error: err.message });
   }
 
+  // Логируем отметку ТО
+  try {
+    const logUser = db.prepare('SELECT display_name FROM users WHERE id = ?').get(req.user.id);
+    const task = db.prepare('SELECT mt.*, b.name as building_name FROM monthly_tasks mt JOIN buildings b ON b.id = mt.building_id WHERE mt.id = ?').get(req.params.taskId);
+    let subject = task?.building_name || `задача #${req.params.taskId}`;
+    if (completion_type === 'elevator' && elevator_id) {
+      const el = db.prepare('SELECT e.name as el_name, ent.name as ent_name FROM elevators e JOIN entrances ent ON ent.id = e.entrance_id WHERE e.id = ?').get(elevator_id);
+      if (el) subject += ` — ${el.ent_name} — ${el.el_name}`;
+    } else if (completion_type === 'entrance' && entrance_id) {
+      const ent = db.prepare('SELECT name FROM entrances WHERE id = ?').get(entrance_id);
+      if (ent) subject += ` — ${ent.name}`;
+    }
+    const action = is_completed ? 'поставил галку ✓' : 'снял галку';
+    writeLog({
+      event_type: is_completed ? 'to_check' : 'to_uncheck',
+      user_id: req.user.id,
+      user_name: logUser?.display_name,
+      ip: getIp(req),
+      description: `${logUser?.display_name} ${action}: ${subject}`,
+      meta: { task_id: req.params.taskId, completion_type, elevator_id, entrance_id, building_id }
+    });
+  } catch (e) { /* не ломаем основной поток */ }
+
   updateTaskStatus(req.params.taskId);
   const task = db.prepare('SELECT * FROM monthly_tasks WHERE id = ?').get(req.params.taskId);
   const completions = db.prepare(
@@ -436,7 +460,7 @@ router.get('/:taskId/history', authMiddleware, (req, res) => {
      JOIN users u ON u.id = ch.user_id
      JOIN task_completions tc ON tc.id = ch.task_completion_id
      LEFT JOIN elevators el ON el.id = tc.elevator_id
-     LEFT JOIN entrances ent ON ent.id = tc.entrance_id
+     LEFT JOIN entrances ent ON ent.id = COALESCE(tc.entrance_id, el.entrance_id)
      WHERE tc.monthly_task_id = ? ORDER BY ch.timestamp DESC`
   ).all(req.params.taskId).slice(0, 200));
 });

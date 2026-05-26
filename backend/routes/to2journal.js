@@ -4,6 +4,7 @@
  */
 
 import { Router } from 'express';
+import { writeLog, getIp } from '../logger.js';
 import db from '../db.js';
 import { authMiddleware } from '../auth.js';
 
@@ -100,6 +101,10 @@ router.delete('/to2/:buildingId/:year/:month', authMiddleware, (req, res) => {
   db.prepare(
     'INSERT INTO to2_journal_history (entity_type, entity_id, action, user_id, timestamp, building_id, year, month) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
   ).run('to2', existing.id, 'unset', req.user.id, new Date().toISOString(), buildingId, year, month);
+  const b2 = db.prepare('SELECT name FROM buildings WHERE id = ?').get(buildingId);
+  const u2 = db.prepare('SELECT display_name FROM users WHERE id = ?').get(req.user.id);
+  writeLog({ event_type: 'to2_unset', user_id: req.user.id, user_name: u2?.display_name, ip: getIp(req),
+    description: `${u2?.display_name} снял ТО2: ${b2?.name || buildingId} (${month}/${year})` });
   res.json({ active: false });
 });
 
@@ -127,6 +132,10 @@ router.post('/journal/:elevatorId', authMiddleware, (req, res) => {
     'INSERT INTO to2_journal_history (entity_type, entity_id, action, user_id, timestamp, elevator_id, building_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
   ).run('journal', row.id, 'set', req.user.id, now, elevatorId, elevator.building_id);
 
+  const jUser = db.prepare('SELECT display_name FROM users WHERE id = ?').get(req.user.id);
+  const elInfo = db.prepare('SELECT e.name as el_name, ent.name as ent_name, b.name as b_name FROM elevators e JOIN entrances ent ON ent.id = e.entrance_id JOIN buildings b ON b.id = ent.building_id WHERE e.id = ?').get(elevatorId);
+  writeLog({ event_type: 'journal_set', user_id: req.user.id, user_name: jUser?.display_name, ip: getIp(req),
+    description: `${jUser?.display_name} установил Журнал: ${elInfo ? elInfo.b_name + ' — ' + elInfo.ent_name + ' — ' + elInfo.el_name : elevatorId}` });
   res.json({ active: true, data: row });
 });
 
@@ -146,6 +155,10 @@ router.delete('/journal/:elevatorId', authMiddleware, (req, res) => {
     'INSERT INTO to2_journal_history (entity_type, entity_id, action, user_id, timestamp, elevator_id, building_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
   ).run('journal', existing.id, 'unset', req.user.id, now, elevatorId, elevator?.building_id || null);
 
+  const juUser = db.prepare('SELECT display_name FROM users WHERE id = ?').get(req.user.id);
+  const juEl = db.prepare('SELECT e.name as el_name, ent.name as ent_name, b.name as b_name FROM elevators e JOIN entrances ent ON ent.id = e.entrance_id JOIN buildings b ON b.id = ent.building_id WHERE e.id = ?').get(elevatorId);
+  writeLog({ event_type: 'journal_unset', user_id: req.user.id, user_name: juUser?.display_name, ip: getIp(req),
+    description: `${juUser?.display_name} снял Журнал: ${juEl ? juEl.b_name + ' — ' + juEl.ent_name + ' — ' + juEl.el_name : elevatorId}` });
   res.json({ active: false });
 });
 

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { writeLog, getIp } from '../logger.js';
 import bcrypt from 'bcryptjs';
 import db from '../db.js';
 import { generateToken, authMiddleware, invalidateTokens } from '../auth.js';
@@ -57,6 +58,8 @@ router.post('/setup',
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
     const token = generateToken(user);
     res.cookie('token', token, cookieOpts(req));
+    writeLog({ event_type: 'login_ok', user_id: user.id, user_name: user.display_name, ip: getIp(req),
+      description: `Вход в систему: ${user.display_name}` });
     res.json({ token, user: safeUser(user) });
   }
 );
@@ -71,6 +74,8 @@ router.post('/login',
     const { username, password } = req.body;
     const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username.trim());
     if (!user || !bcrypt.compareSync(password, user.password_hash)) {
+      writeLog({ event_type: 'login_fail', user_name: username, ip: getIp(req),
+        description: `Неудачная попытка входа: «${username}»` });
       return res.status(401).json({ error: 'Неверный логин или пароль' });
     }
     if (user.is_blocked) return res.status(403).json({ error: 'Аккаунт заблокирован' });
@@ -81,6 +86,11 @@ router.post('/login',
 );
 
 router.post('/logout', (_req, res) => {
+  if (req.user) {
+    const u = db.prepare('SELECT display_name FROM users WHERE id = ?').get(req.user.id);
+    writeLog({ event_type: 'logout', user_id: req.user.id, user_name: u?.display_name, ip: getIp(req),
+      description: `Выход из системы: ${u?.display_name || req.user.id}` });
+  }
   res.clearCookie('token');
   res.json({ ok: true });
 });
